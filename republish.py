@@ -23,7 +23,7 @@ class Republisher(ConsumerMixin):
         self.connection = connection
         self.queues = [Queue(queue)]
         self.producer = Producer(connection.channel())
-        self.throttle = throttle
+        self.throttle = float(throttle)
         self.routing_key = routing_key
 
     def on_message(self, body, message):
