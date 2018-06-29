@@ -19,24 +19,27 @@ logger.addHandler(ch)
 from collections import defaultdict
 
 class Republisher(ConsumerMixin):
-    def __init__(self, connection, queue, throttle):
+    def __init__(self, connection, queue, throttle, routing_key):
         self.connection = connection
         self.queues = [Queue(queue)]
         self.producer = Producer(connection.channel())
         self.throttle = throttle
+        self.routing_key = routing_key
 
     def on_message(self, body, message):
         original_exchange = message.delivery_info['exchange']
-        original_routing_key = message.delivery_info['routing_key']
+        current_routing_key = message.delivery_info['routing_key']
+        if self.routing_key is not None:
+            current_routing_key = self.routing_key
         message.properties['content_type'] = message.content_type
         self.producer.publish(body=body,
-                              routing_key=original_routing_key,
+                              routing_key=current_routing_key,
                               exchange=original_exchange,
                               properties=message.properties,
         )
         message.ack()
         logger.info("Sent message with routing key {} to exchange {}".format(
-            original_routing_key, original_exchange
+            current_routing_key, original_exchange
         ))
         time.sleep(self.throttle)
 
@@ -52,8 +55,8 @@ class Republisher(ConsumerMixin):
         logger.critical("connection_error")
 
 
-def start(broker_url, queue, throttle):
-   Republisher(Connection(broker_url), queue, throttle).run()
+def start(broker_url, queue, throttle, routing_key):
+   Republisher(Connection(broker_url), queue, throttle, routing_key).run()
 
 
 def main():
@@ -61,6 +64,7 @@ def main():
     parser.add_argument('--broker-url', help='Broker URL to connect to', dest='broker_url', required=True)
     parser.add_argument('--queue', help='Queue to subscribe to', required=True)
     parser.add_argument('--throttle', help='Time between message reads', default=1)
+    parser.add_argument('--routing-key', help='Override original routing key', dest='routing_key')
 
     args = parser.parse_args()
 
