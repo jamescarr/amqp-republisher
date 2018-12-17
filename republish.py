@@ -56,10 +56,10 @@ class Republisher(ConsumerMixin):
         logger.critical("connection_error")
 
 
-def start(broker_urls, queue, throttle, routing_key, paralellism):
+def start(broker_urls, queue, throttle, routing_key, parallelism):
     def run_republisher(broker_url):
         Republisher(broker_url, queue, throttle, routing_key).run()
-    pool = Pool(paralellism)
+    pool = Pool(parallelism)
     pool.map(run_republisher, broker_urls)
 
 
@@ -69,7 +69,7 @@ def main():
     parser.add_argument('--queue', help='Queue to subscribe to', required=True)
     parser.add_argument('--throttle', help='Time between message reads', default=1)
     parser.add_argument('--routing-key', help='Override original routing key', dest='routing_key')
-    parser.add_argument('--paralellism', help='The max number of brokers to consume from in parallel', default=5, dest='parallelism')
+    parser.add_argument('--parallelism', help='The max number of brokers to consume from in parallel', default=5, dest='parallelism')
 
     args = parser.parse_args()
 
