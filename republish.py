@@ -58,7 +58,7 @@ class Republisher(ConsumerMixin):
 
 def start(broker_urls, queue, throttle, routing_key, parallelism):
     def run_republisher(broker_url):
-        Republisher(broker_url, queue, throttle, routing_key).run()
+        Republisher(Connection(broker_url), queue, throttle, routing_key).run()
     pool = Pool(parallelism)
     pool.map(run_republisher, broker_urls)
 
