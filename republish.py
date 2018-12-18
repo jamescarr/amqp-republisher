@@ -4,6 +4,7 @@ import time
 from kombu import Connection, Exchange, Queue, Producer
 from kombu.mixins import ConsumerMixin
 from kombu.log import get_logger
+from multiprocessing.dummy import Pool
 import logging
 import sys
 
@@ -51,20 +52,24 @@ class Republisher(ConsumerMixin):
                      accept=['json']),
         ]
 
-    def on_connection_error(exc, interval):
+    def on_connection_error(self, exc, interval):
         logger.critical("connection_error")
 
 
-def start(broker_url, queue, throttle, routing_key):
-   Republisher(Connection(broker_url), queue, throttle, routing_key).run()
+def start(broker_urls, queue, throttle, routing_key, parallelism):
+    def run_republisher(broker_url):
+        Republisher(Connection(broker_url), queue, throttle, routing_key).run()
+    pool = Pool(parallelism)
+    pool.map(run_republisher, broker_urls)
 
 
 def main():
     parser = argparse.ArgumentParser(description='Republish messages.')
-    parser.add_argument('--broker-url', help='Broker URL to connect to', dest='broker_url', required=True)
+    parser.add_argument('-b', '--broker-url', help='Broker URL to connect to', dest='broker_urls', metavar='BROKER_URL', action='append', required=True)
     parser.add_argument('--queue', help='Queue to subscribe to', required=True)
     parser.add_argument('--throttle', help='Time between message reads', default=1)
     parser.add_argument('--routing-key', help='Override original routing key', dest='routing_key')
+    parser.add_argument('--parallelism', help='The max number of brokers to consume from in parallel', default=5, dest='parallelism')
 
     args = parser.parse_args()
 
